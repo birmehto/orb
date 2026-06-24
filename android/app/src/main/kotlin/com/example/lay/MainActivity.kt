@@ -1,6 +1,8 @@
 package com.example.lay
 
 import android.Manifest
+import android.app.ActivityManager
+import android.app.KeyguardManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -30,23 +32,23 @@ class MainActivity : FlutterActivity() {
         methodChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
                 "startService" -> {
-                    val intent = Intent(this, BubbleService::class.java).apply {
-                        action = BubbleService.ACTION_SHOW
-                    }
-                    ContextCompat.startForegroundService(this, intent)
+                    ContextCompat.startForegroundService(
+                        this, Intent(this, BubbleService::class.java).apply {
+                            action = BubbleService.ACTION_SHOW
+                        }
+                    )
                     result.success(true)
                 }
 
                 "stopService" -> {
-                    val intent = Intent(this, BubbleService::class.java).apply {
+                    startService(Intent(this, BubbleService::class.java).apply {
                         action = BubbleService.ACTION_STOP
-                    }
-                    startService(intent)
+                    })
                     result.success(true)
                 }
 
                 "isServiceRunning" -> {
-                    val manager = getSystemService(ACTIVITY_SERVICE) as android.app.ActivityManager
+                    val manager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
                     val running = manager.getRunningServices(Integer.MAX_VALUE).any {
                         BubbleService::class.java.name == it.service.className
                     }
@@ -54,58 +56,52 @@ class MainActivity : FlutterActivity() {
                 }
 
                 "checkOverlayPermission" -> {
-                    result.success(checkOverlayPermission())
+                    result.success(
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+                            Settings.canDrawOverlays(this) else true
+                    )
                 }
 
                 "requestOverlayPermission" -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !checkOverlayPermission()) {
-                        val intent = Intent(
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+                        startActivity(Intent(
                             Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                             android.net.Uri.parse("package:$packageName")
-                        )
-                        startActivity(intent)
+                        ))
                     }
                     result.success(true)
                 }
 
                 "checkNotificationPermission" -> {
-                    result.success(checkNotificationPermission())
+                    result.success(
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+                            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+                        else true
+                    )
                 }
 
                 "requestNotificationPermission" -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !checkNotificationPermission()) {
-                        requestPermissions(
-                            arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                            NOTIFICATION_PERMISSION_REQUEST_CODE
-                        )
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1003)
                     }
                     result.success(true)
                 }
 
-                "getBubblePosition" -> {
-                    val prefs = getSharedPreferences("bubble_prefs", MODE_PRIVATE)
-                    val x = prefs.getFloat("bubble_x", -1f).toDouble()
-                    val y = prefs.getFloat("bubble_y", -1f).toDouble()
-                    result.success(mapOf("x" to x, "y" to y))
-                }
-
                 "checkBatteryOptimization" -> {
-                    result.success(checkBatteryOptimization())
+                    result.success(
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+                            (getSystemService(POWER_SERVICE) as android.os.PowerManager).isIgnoringBatteryOptimizations(packageName)
+                        else true
+                    )
                 }
 
                 "requestBatteryOptimization" -> {
                     try {
-                        val intent = Intent(
-                            Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
-                            android.net.Uri.parse("package:$packageName")
-                        )
-                        startActivity(intent)
+                        startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                            android.net.Uri.parse("package:$packageName")))
                     } catch (_: Exception) {
-                        val intent = Intent(
-                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                            android.net.Uri.parse("package:$packageName")
-                        )
-                        startActivity(intent)
+                        startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            android.net.Uri.parse("package:$packageName")))
                     }
                     result.success(true)
                 }
@@ -115,45 +111,38 @@ class MainActivity : FlutterActivity() {
                     result.success(true)
                 }
 
+                "updateBubbleStyle" -> {
+                    val color = (call.argument<Int>("color") ?: 0xFF6366F1.toInt())
+                    val size = (call.argument<Int>("size") ?: 56)
+                    val opacity = (call.argument<Double>("opacity") ?: 1.0).toFloat()
+                    BubbleService.activeInstance?.overlayManager?.updateStyle(color, size, opacity)
+                    result.success(true)
+                }
+
+                "setAutoHide" -> {
+                    val enabled = call.argument<Boolean>("enabled") ?: false
+                    val timeout = call.argument<Int>("timeoutSeconds") ?: 30
+                    BubbleService.activeInstance?.overlayManager?.setAutoHide(enabled, timeout)
+                    result.success(true)
+                }
+
+                "isDeviceLocked" -> {
+                    val km = getSystemService(KEYGUARD_SERVICE) as KeyguardManager
+                    result.success(km.isKeyguardLocked)
+                }
+
+                "getNativeClips" -> {
+                    val clips = BubbleService.activeInstance?.overlayManager?.getClipHistory() ?: emptyList()
+                    result.success(clips)
+                }
+
                 else -> result.notImplemented()
             }
-        }
-    }
-
-    private fun checkOverlayPermission(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            Settings.canDrawOverlays(this)
-        } else {
-            true
-        }
-    }
-
-    private fun checkNotificationPermission(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-        } else {
-            true
-        }
-    }
-
-    private fun checkBatteryOptimization(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val powerManager = getSystemService(POWER_SERVICE) as android.os.PowerManager
-            powerManager.isIgnoringBatteryOptimizations(packageName)
-        } else {
-            true
         }
     }
 
     override fun onDestroy() {
         methodChannel?.setMethodCallHandler(null)
         super.onDestroy()
-    }
-
-    companion object {
-        private const val NOTIFICATION_PERMISSION_REQUEST_CODE = 1003
     }
 }

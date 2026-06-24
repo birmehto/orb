@@ -17,11 +17,13 @@ class BubbleService : Service() {
     override fun onCreate() {
         super.onCreate()
         overlayManager = BubbleOverlayManager(this)
+        activeInstance = this
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
+                activeInstance = null
                 stopSelf()
                 return START_NOT_STICKY
             }
@@ -42,13 +44,14 @@ class BubbleService : Service() {
         }
     }
 
-    override fun onBind(intent: Intent?): IBinder? = null
-
     override fun onDestroy() {
+        activeInstance = null
         overlayManager.dismiss()
         stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()
     }
+
+    override fun onBind(intent: Intent?): IBinder? = null
 
     private fun createNotification(): Notification {
         val channelId = NOTIFICATION_CHANNEL_ID
@@ -75,6 +78,8 @@ class BubbleService : Service() {
     }
 
     companion object {
+        var activeInstance: BubbleService? = null
+            private set
         const val NOTIFICATION_ID = 1001
         const val NOTIFICATION_CHANNEL_ID = "bubble_service_channel"
         const val OVERLAY_PERMISSION_REQUEST_CODE = 1002

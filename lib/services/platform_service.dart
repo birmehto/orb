@@ -92,4 +92,41 @@ class PlatformService {
     } catch (_) {}
     return {'x': -1.0, 'y': -1.0};
   }
+
+  Future<void> updateBubbleStyle(int color, int size, double opacity) async {
+    try {
+      await _channel.invokeMethod('updateBubbleStyle', {
+        'color': color,
+        'size': size,
+        'opacity': opacity,
+      });
+    } catch (_) {}
+  }
+
+  Future<void> setAutoHideEnabled(bool enabled, int timeoutSeconds) async {
+    try {
+      await _channel.invokeMethod('setAutoHide', {
+        'enabled': enabled,
+        'timeoutSeconds': timeoutSeconds,
+      });
+    } catch (_) {}
+  }
+
+  Future<bool> isDeviceLocked() async {
+    try {
+      return await _channel.invokeMethod('isDeviceLocked') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getNativeClips() async {
+    try {
+      final result = await _channel.invokeMethod<List<dynamic>>('getNativeClips');
+      if (result != null) {
+        return result.cast<Map<String, dynamic>>();
+      }
+    } catch (_) {}
+    return [];
+  }
 }

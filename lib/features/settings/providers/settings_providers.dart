@@ -7,8 +7,3 @@ final bubbleSettingsProvider = FutureProvider<BubbleSettings>((ref) async {
   final db = await ref.watch(databaseProvider.future);
   return db.getSettings();
 });
-
-final isPinEnabledProvider = FutureProvider<bool>((ref) async {
-  final db = await ref.watch(databaseProvider.future);
-  return db.isPinEnabled;
-});

@@ -1,4 +1,6 @@
-class ClipItem {
+import 'package:equatable/equatable.dart';
+
+class ClipItem extends Equatable {
   final String text;
   final DateTime timestamp;
   final bool isFavorite;
@@ -8,6 +10,9 @@ class ClipItem {
     required this.timestamp,
     this.isFavorite = false,
   });
+
+  @override
+  List<Object?> get props => [text, timestamp, isFavorite];
 
   ClipItem copyWith({String? text, DateTime? timestamp, bool? isFavorite}) {
     return ClipItem(

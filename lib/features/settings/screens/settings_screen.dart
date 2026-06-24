@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/colors.dart';
 import '../../../core/database.dart';
 import '../../../core/models/bubble_settings.dart';
+import '../../../core/providers.dart';
+import '../../../core/widgets/section_header.dart';
+import '../../../core/widgets/settings_tile.dart';
 import '../../../services/platform_service.dart';
 import '../providers/settings_providers.dart';
 
@@ -14,17 +19,6 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  static const _presetColors = [
-    0xFF6366F1,
-    0xFF8B5CF6,
-    0xFFEC4899,
-    0xFFEF4444,
-    0xFFF59E0B,
-    0xFF10B981,
-    0xFF06B6D4,
-    0xFF1E293B,
-  ];
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -36,17 +30,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         data: (settings) => ListView(
           padding: const EdgeInsets.only(bottom: 32),
           children: [
-            _sectionHeader(theme, 'Bubble Style'),
+            const SectionHeader(title: 'Bubble Style'),
             _colorPicker(theme, settings),
             _sizeSlider(theme, settings),
             _opacitySlider(theme, settings),
             const SizedBox(height: 8),
-            _sectionHeader(theme, 'Behavior'),
+            const SectionHeader(title: 'Behavior'),
             _autoHideTile(theme, settings),
             const SizedBox(height: 8),
-            _sectionHeader(theme, 'Security'),
-            _pinTile(theme, ref.watch(isPinEnabledProvider).asData?.value ?? false),
-            _lockScreenTile(theme),
+            const SectionHeader(title: 'About'),
+            _aboutSection(),
           ],
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -55,16 +48,45 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _sectionHeader(ThemeData theme, String title) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-      child: Text(
-        title,
-        style: theme.textTheme.titleSmall?.copyWith(
-          fontWeight: FontWeight.w600,
-          color: theme.colorScheme.onSurfaceVariant,
+  Widget _aboutSection() {
+    final theme = Theme.of(context);
+    final appInfoAsync = ref.watch(appInfoProvider);
+    return Column(
+      children: [
+        SettingsTile(
+          icon: Icons.code,
+          iconColor: AppColors.primary,
+          title: 'GitHub',
+          subtitle: 'View source code and contribute',
+          trailing: Icon(
+            Icons.open_in_new,
+            size: 18,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          onTap: () async {
+            final uri = Uri.parse('https://github.com/anomalyco/opencode');
+            if (await canLaunchUrl(uri)) {
+              await launchUrl(uri);
+            }
+          },
         ),
-      ),
+        const SizedBox(height: 16),
+        appInfoAsync.when(
+          data: (info) => Center(
+            child: Text(
+              '${info.appName} ${info.versionLabel}',
+              style: TextStyle(
+                color: theme.colorScheme.onSurfaceVariant.withValues(
+                  alpha: 0.5,
+                ),
+                fontSize: 12,
+              ),
+            ),
+          ),
+          loading: () => const SizedBox.shrink(),
+          error: (_, _) => const SizedBox.shrink(),
+        ),
+      ],
     );
   }
 
@@ -87,7 +109,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               Wrap(
                 spacing: 12,
                 runSpacing: 12,
-                children: _presetColors
+                children: AppColors.presetColorInts
                     .map(
                       (c) => GestureDetector(
                         onTap: () =>
@@ -236,81 +258,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _pinTile(ThemeData theme, bool pinEnabled) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Column(
-        children: [
-          ListTile(
-            leading: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(Icons.lock_outline, color: theme.colorScheme.primary),
-            ),
-            title: const Text(
-              'PIN Lock',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            subtitle: Text(
-              pinEnabled ? 'PIN is set' : 'Require PIN to use bubble',
-              style: TextStyle(
-                fontSize: 13,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            trailing: pinEnabled
-                ? TextButton(
-                    onPressed: () => _removePin(),
-                    child: const Text(
-                      'Remove',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                  )
-                : FilledButton.tonal(
-                    onPressed: () => _setupPin(),
-                    child: const Text('Set PIN'),
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _lockScreenTile(ThemeData theme) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: ListTile(
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(
-            Icons.screen_lock_portrait_outlined,
-            color: theme.colorScheme.primary,
-          ),
-        ),
-        title: const Text(
-          'Lock Screen Protection',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(
-          'Restrict bubble actions when device is locked',
-          style: TextStyle(
-            fontSize: 13,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ),
-    );
-  }
-
   Future<void> _updateSettings(BubbleSettings s) async {
     final db = await Database.getInstance();
     await db.saveSettings(s);
@@ -326,103 +273,5 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         s.autoHideTimeoutSeconds,
       );
     } catch (_) {}
-  }
-
-  Future<void> _setupPin() async {
-    final ctrl = TextEditingController();
-    final confirmCtrl = TextEditingController();
-    final result = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Set PIN'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: ctrl,
-              obscureText: true,
-              maxLength: 6,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Enter PIN (4-6 digits)',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: confirmCtrl,
-              obscureText: true,
-              maxLength: 6,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Confirm PIN',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final pin = ctrl.text.trim();
-              final confirm = confirmCtrl.text.trim();
-              if (pin.length < 4) {
-                ScaffoldMessenger.of(ctx).showSnackBar(
-                  const SnackBar(content: Text('PIN must be 4-6 digits')),
-                );
-                return;
-              }
-              if (pin != confirm) {
-                ScaffoldMessenger.of(ctx).showSnackBar(
-                  const SnackBar(content: Text('PINs do not match')),
-                );
-                return;
-              }
-              Navigator.pop(ctx, pin);
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-
-    if (result != null) {
-      final db = await Database.getInstance();
-      await db.setPin(result);
-      ref.invalidate(isPinEnabledProvider);
-    }
-  }
-
-  Future<void> _removePin() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Remove PIN?'),
-        content: const Text(
-          'Anyone can use the bubble without entering a PIN.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Remove'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      final db = await Database.getInstance();
-      await db.removePin();
-      ref.invalidate(isPinEnabledProvider);
-    }
   }
 }

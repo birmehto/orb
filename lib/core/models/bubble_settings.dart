@@ -1,4 +1,6 @@
-class BubbleSettings {
+import 'package:equatable/equatable.dart';
+
+class BubbleSettings extends Equatable {
   final int color;
   final double size;
   final double opacity;
@@ -12,6 +14,9 @@ class BubbleSettings {
     this.autoHideEnabled = false,
     this.autoHideTimeoutSeconds = 30,
   });
+
+  @override
+  List<Object?> get props => [color, size, opacity, autoHideEnabled, autoHideTimeoutSeconds];
 
   BubbleSettings copyWith({
     int? color,

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="popup_background">#FF1F2937</color>
+    <color name="popup_text">#FFF9FAFB</color>
+    <color name="popup_divider">#33FFFFFF</color>
+</resources>

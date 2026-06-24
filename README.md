@@ -1,4 +1,4 @@
-# Lay
+# Orb
 
 Floating bubble overlay for Android — quick clipboard search and copy, inspired by Facebook Chat Heads.
 
@@ -27,7 +27,7 @@ Flutter (UI + State)
   └── HomeScreen             — settings UI with permission cards
         │
         ▼
-MethodChannel (com.lay/bubble)
+MethodChannel (com.orb/bubble)
         │
         ▼
 Android (Kotlin)
@@ -64,7 +64,7 @@ flutter build apk --debug    # or --release
 
 ## MethodChannel API
 
-All calls go through the `com.lay/bubble` channel.
+All calls go through the `com.orb/bubble` channel.
 
 | Method | Direction | Description |
 |---|---|---|

@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'app.dart';
-import 'core/constants.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final methodChannel = const MethodChannel(AppConstants.channelName);
+  final methodChannel = MethodChannel('com.orb/bubble');
   methodChannel.setMethodCallHandler((call) async {
     if (call.method == 'onAppResumed' || call.method == 'onOverlayPermissionResult') {
       // These are handled by providers re-invalidating on resume
@@ -17,7 +16,7 @@ void main() {
 
   runApp(
     const ProviderScope(
-      child: LayApp(),
+      child: OrbApp(),
     ),
   );
 }

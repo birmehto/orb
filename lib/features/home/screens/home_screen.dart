@@ -117,7 +117,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Lay'),
+        title: const Text('Orb'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

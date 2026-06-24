@@ -66,7 +66,7 @@ class BubbleService : Service() {
         }
 
         return NotificationCompat.Builder(this, channelId)
-            .setContentTitle("Lay Bubble")
+            .setContentTitle("Orb Bubble")
             .setContentText("Floating bubble is active")
             .setSmallIcon(android.R.drawable.ic_menu_search)
             .setOngoing(true)
